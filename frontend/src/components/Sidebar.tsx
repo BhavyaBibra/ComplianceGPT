@@ -32,7 +32,7 @@ export function Sidebar({ activeId, onSelect, triggerRefetch }: SidebarProps) {
             </div>
 
             <button
-                className="w-[calc(100%-24px)] mx-3 mt-4 mb-2 flex items-center gap-2 px-3 py-2 text-sm text-text-primary bg-bg-color hover:bg-hover-color/50 rounded-md border border-border-color transition-colors"
+                className="sidebar-new-chat-btn"
                 onClick={() => onSelect(null)}
             >
                 <Plus size={16} />
@@ -44,7 +44,7 @@ export function Sidebar({ activeId, onSelect, triggerRefetch }: SidebarProps) {
                     <button
                         key={conv.id}
                         onClick={() => onSelect(conv.id)}
-                        className={`w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors truncate ${activeId === conv.id ? 'bg-hover-color text-accent-color font-medium' : 'text-text-secondary hover:bg-hover-color/50'}`}
+                        className={`sidebar-chat-item ${activeId === conv.id ? 'active' : ''}`}
                         title={conv.title}
                     >
                         <MessageSquare size={16} className="shrink-0" />

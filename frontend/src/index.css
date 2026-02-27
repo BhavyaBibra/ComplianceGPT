@@ -50,13 +50,14 @@ body {
 }
 
 .sidebar-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #fff;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.25rem;
+    letter-spacing: -0.01em;
 }
 
 .sidebar-subtitle {
@@ -66,6 +67,60 @@ body {
 
 .sidebar-spacer {
     flex-grow: 1;
+}
+
+.sidebar-new-chat-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: calc(100% - 1.5rem);
+    margin: 1rem 0.75rem 0.5rem;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    font-family: inherit;
+}
+
+.sidebar-new-chat-btn:hover {
+    background-color: var(--border-color);
+}
+
+.sidebar-chat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-chat-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.sidebar-chat-item.active {
+    background-color: var(--border-color);
+    color: var(--text-primary);
+    font-weight: 500;
 }
 
 .logout-button {
@@ -85,7 +140,7 @@ body {
 }
 
 .logout-button:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--border-color);
     color: var(--text-primary);
 }
 
@@ -147,8 +202,9 @@ body {
 }
 
 .generate-report-btn:hover {
-    color: #fff;
-    border-color: var(--accent-color);
+    color: var(--text-primary);
+    background-color: var(--border-color);
+    border-color: var(--border-color);
 }
 
 .messages-container {
