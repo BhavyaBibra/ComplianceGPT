@@ -50,6 +50,10 @@ async def query_endpoint(request: QueryRequest, user_id: str = Depends(get_user_
         
         if request.stream:
             async def stream_and_save():
+                # Ship new conversation_id to UI FIRST, before any RAG content
+                if not request.conversation_id:
+                    yield f"data: {json.dumps({'type': 'conversation_id', 'id': conv_id})}\n\n"
+                
                 full_answer = ""
                 metadata = {}
                 async for chunk in query_service.process_query_stream(request.question, frameworks=request.frameworks):
@@ -83,10 +87,6 @@ async def query_endpoint(request: QueryRequest, user_id: str = Depends(get_user_
                     admin.table("conversations").update({"updated_at": "now()"}).eq("id", conv_id).execute()
                 except Exception as db_e:
                     logger.error(f"Failed to save assistant stream message: {db_e}")
-                    
-                # Ship new conversation_id to UI
-                if not request.conversation_id:
-                    yield f"data: {json.dumps({'type': 'conversation_id', 'id': conv_id})}\n\n"
 
             return StreamingResponse(
                 stream_and_save(),

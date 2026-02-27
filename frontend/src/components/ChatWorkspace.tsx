@@ -46,6 +46,9 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
         scrollToBottom();
     }, [messages, loading]);
 
+    // Ref to skip fetching when we just created a new conversation (messages are already in state)
+    const justCreatedRef = useRef(false);
+
     useEffect(() => {
         if (!activeId) {
             setMessages([]);
@@ -53,6 +56,15 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
             return;
         }
 
+        // If we just created this conversation via handleSend, skip the fetch
+        // because messages are already in the local state from the stream.
+        if (justCreatedRef.current) {
+            justCreatedRef.current = false;
+            setIsWelcome(false);
+            return;
+        }
+
+        // User clicked an existing sidebar conversation — fetch its history
         setIsWelcome(false);
         setIsFetchingHistory(true);
         fetchConversationDetail(activeId)
@@ -113,6 +125,7 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
                     ));
                 },
                 onConversationId: (id) => {
+                    justCreatedRef.current = true;
                     onNewConversation(id);
                 },
                 onError: (err) => {
