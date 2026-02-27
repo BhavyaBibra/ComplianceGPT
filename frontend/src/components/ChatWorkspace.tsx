@@ -10,6 +10,13 @@ const FRAMEWORK_OPTIONS = [
     { id: 'nistcsf', label: 'NIST CSF' }
 ];
 
+const SUGGESTION_CARDS = [
+    { icon: '🔗', title: 'Map Controls', prompt: 'Map NIST 800-53 AC-2 to its ISO 27001 equivalent controls' },
+    { icon: '🛡️', title: 'Analyze Incident', prompt: 'A phishing email compromised an admin account. What controls should we review?' },
+    { icon: '📋', title: 'Explain Controls', prompt: 'Explain the NIST 800-53 access control family and its key controls' },
+    { icon: '📊', title: 'Compliance Gap', prompt: 'What are common gaps between ISO 27001 and NIST CSF implementations?' },
+];
+
 interface ChatWorkspaceProps {
     activeId: string | null;
     onNewConversation: (id: string) => void;
@@ -21,8 +28,8 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
     const [loading, setLoading] = useState(false);
     const [isFetchingHistory, setIsFetchingHistory] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isWelcome, setIsWelcome] = useState(true);
 
-    // All selected by default
     const [selectedFrameworks, setSelectedFrameworks] = useState<Set<string>>(
         new Set(FRAMEWORK_OPTIONS.map(fw => fw.id))
     );
@@ -41,14 +48,12 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
 
     useEffect(() => {
         if (!activeId) {
-            setMessages([{
-                id: 'welcome',
-                role: 'assistant',
-                content: 'Hello! I am ComplianceGPT, your GenAI cybersecurity compliance copilot. Ask me questions about NIST 800-53, ISO 27001, and more.',
-            }]);
+            setMessages([]);
+            setIsWelcome(true);
             return;
         }
 
+        setIsWelcome(false);
         setIsFetchingHistory(true);
         fetchConversationDetail(activeId)
             .then(data => {
@@ -61,13 +66,16 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
             .finally(() => setIsFetchingHistory(false));
     }, [activeId]);
 
-    const handleSend = async () => {
-        if (!input.trim() || loading || isFetchingHistory) return;
+    const handleSend = async (overrideInput?: string) => {
+        const text = (overrideInput || input).trim();
+        if (!text || loading || isFetchingHistory) return;
+
+        setIsWelcome(false);
 
         const userMsg: ChatMessage = {
             id: Date.now().toString(),
             role: 'user',
-            content: input.trim(),
+            content: text,
         };
 
         const assistantMsgId = (Date.now() + 1).toString();
@@ -85,7 +93,7 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
         try {
             const frameworksArr = Array.from(selectedFrameworks);
 
-            await submitQueryStream(userMsg.content, frameworksArr, activeId, {
+            await submitQueryStream(text, frameworksArr, activeId, {
                 onMetadata: (data) => {
                     setMessages((prev) => prev.map(msg =>
                         msg.id === assistantMsgId ? {
@@ -97,7 +105,7 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
                             incident_mode: data.incident_mode
                         } : msg
                     ));
-                    setLoading(false); // Done gathering evidence
+                    setLoading(false);
                 },
                 onToken: (token) => {
                     setMessages((prev) => prev.map(msg =>
@@ -113,7 +121,7 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
                     setLoading(false);
                 },
                 onComplete: () => {
-                    setLoading(false); // Backup termination
+                    setLoading(false);
                 }
             });
         } catch (err: any) {
@@ -132,11 +140,16 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
         }
     };
 
+    const handleSuggestionClick = (prompt: string) => {
+        setInput(prompt);
+        handleSend(prompt);
+    };
+
     return (
         <main className="chat-workspace">
             <header className="chat-header">
                 <div className="header-title-container">
-                    <Shield size={24} className="text-accent-color" />
+                    <Shield size={24} className="header-shield-icon" />
                     <h1 className="header-title">ComplianceGPT</h1>
                 </div>
                 <button
@@ -149,11 +162,34 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
                 </button>
             </header>
 
-            {/* Scrollable Message List */}
             <div className="messages-container">
                 {isFetchingHistory ? (
-                    <div className="flex h-full items-center justify-center">
-                        <Loader2 className="animate-spin text-accent-color opacity-50" size={32} />
+                    <div className="loading-center">
+                        <Loader2 className="loading-spinner" size={32} />
+                    </div>
+                ) : isWelcome ? (
+                    /* ======= Welcome Screen ======= */
+                    <div className="welcome-screen">
+                        <div className="welcome-icon-wrapper">
+                            <Shield size={48} className="welcome-shield" />
+                        </div>
+                        <h2 className="welcome-heading">How can I help you today?</h2>
+                        <p className="welcome-subtext">
+                            Ask about compliance frameworks, map controls across standards, or analyze security incidents.
+                        </p>
+                        <div className="suggestion-cards-grid">
+                            {SUGGESTION_CARDS.map((card, idx) => (
+                                <button
+                                    key={idx}
+                                    className="suggestion-card"
+                                    onClick={() => handleSuggestionClick(card.prompt)}
+                                >
+                                    <span className="suggestion-card-icon">{card.icon}</span>
+                                    <span className="suggestion-card-title">{card.title}</span>
+                                    <span className="suggestion-card-prompt">{card.prompt}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -163,18 +199,20 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
 
                         {loading && (
                             <div className="message-wrapper assistant">
-                                <div className="flex flex-col max-w-[85%]">
-                                    <span className="text-xs text-text-secondary mb-1 ml-1 font-medium">ComplianceGPT</span>
-                                    <div className="bg-bg-secondary border border-border-color rounded-lg rounded-bl-none p-4 flex items-center gap-2">
-                                        <Loader2 size={16} className="spinner text-accent-color" />
-                                        <span className="text-text-secondary font-medium whitespace-nowrap">Gathering evidence...</span>
+                                <div className="assistant-message-content">
+                                    <div className="typing-indicator-wrapper">
+                                        <div className="typing-indicator">
+                                            <span className="typing-dot"></span>
+                                            <span className="typing-dot"></span>
+                                            <span className="typing-dot"></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {error && (
-                            <div className="mx-auto flex max-w-lg items-center gap-2 rounded-md bg-red-950/40 border border-error-color/50 px-4 py-3 text-sm text-error-color mt-4">
+                            <div className="error-banner">
                                 <AlertCircle size={16} />
                                 <p>{error}</p>
                             </div>
@@ -189,10 +227,12 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
             <div className="input-area-container">
                 <div className="input-area-content">
                     <div className="framework-selector-container">
-                        <div className="framework-selector-header tooltip-trigger">
-                            <span className="text-xs text-text-secondary font-medium">Frameworks Scope</span>
-                            <Info size={12} className="text-text-secondary" />
-                            <div className="tooltip">Toggle frameworks to restrict search context.</div>
+                        <div className="framework-selector-header">
+                            <span className="framework-label">Frameworks Scope</span>
+                            <div className="tooltip-trigger">
+                                <Info size={12} className="framework-info-icon" />
+                                <div className="tooltip">Toggle frameworks to restrict search context.</div>
+                            </div>
                         </div>
                         <div className="framework-chips">
                             {FRAMEWORK_OPTIONS.map((fw) => {
@@ -225,7 +265,7 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
                             : Array.from(selectedFrameworks).map(id => FRAMEWORK_OPTIONS.find(f => f.id === id)?.label).join(', ')}
                     </div>
 
-                    <div className={`input-form ${loading ? 'opacity-70' : ''}`}>
+                    <div className={`input-form ${loading ? 'input-form-disabled' : ''}`}>
                         <textarea
                             ref={inputRef}
                             className="chat-input"
@@ -238,7 +278,7 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
                         />
                         <button
                             type="button"
-                            onClick={handleSend}
+                            onClick={() => handleSend()}
                             disabled={!input.trim() || loading || isFetchingHistory || selectedFrameworks.size === 0}
                             className="send-button"
                             aria-label="Send message"
@@ -248,7 +288,6 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
                     </div>
                 </div>
             </div>
-            {/* Report Generation Modal */}
             <ReportModal
                 isOpen={isReportModalOpen}
                 onClose={() => setIsReportModalOpen(false)}

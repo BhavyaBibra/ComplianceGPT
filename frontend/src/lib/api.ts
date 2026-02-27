@@ -191,3 +191,9 @@ export async function fetchConversationDetail(id: string): Promise<Conversation 
     if (!res.ok) throw new Error("Failed to fetch conversation detail");
     return res.json();
 }
+
+export async function deleteConversation(id: string): Promise<void> {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/conversations/${id}`, { method: 'DELETE', headers });
+    if (!res.ok) throw new Error("Failed to delete conversation");
+}
