@@ -91,12 +91,10 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
         };
 
         const assistantMsgId = (Date.now() + 1).toString();
+        const assistantCreated = { current: false };
 
-        setMessages((prev) => [...prev, userMsg, {
-            id: assistantMsgId,
-            role: 'assistant',
-            content: ''
-        }]);
+        // Only add the user message now; assistant message is created when first token arrives
+        setMessages((prev) => [...prev, userMsg]);
 
         setInput('');
         setLoading(true);
@@ -107,22 +105,49 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
 
             await submitQueryStream(text, frameworksArr, activeId, {
                 onMetadata: (data) => {
-                    setMessages((prev) => prev.map(msg =>
-                        msg.id === assistantMsgId ? {
-                            ...msg,
-                            citations: data.citations,
-                            frameworks_used: data.frameworks_used,
-                            evidence: data.retrieved_chunks,
-                            mapping_mode: data.mapping_mode,
-                            incident_mode: data.incident_mode
-                        } : msg
-                    ));
+                    setMessages((prev) => {
+                        // If assistant message hasn't been created yet, create it with metadata
+                        if (!assistantCreated.current) {
+                            assistantCreated.current = true;
+                            return [...prev, {
+                                id: assistantMsgId,
+                                role: 'assistant' as const,
+                                content: '',
+                                citations: data.citations,
+                                frameworks_used: data.frameworks_used,
+                                evidence: data.retrieved_chunks,
+                                mapping_mode: data.mapping_mode,
+                                incident_mode: data.incident_mode
+                            }];
+                        }
+                        return prev.map(msg =>
+                            msg.id === assistantMsgId ? {
+                                ...msg,
+                                citations: data.citations,
+                                frameworks_used: data.frameworks_used,
+                                evidence: data.retrieved_chunks,
+                                mapping_mode: data.mapping_mode,
+                                incident_mode: data.incident_mode
+                            } : msg
+                        );
+                    });
                     setLoading(false);
                 },
                 onToken: (token) => {
-                    setMessages((prev) => prev.map(msg =>
-                        msg.id === assistantMsgId ? { ...msg, content: msg.content + token } : msg
-                    ));
+                    setMessages((prev) => {
+                        // If assistant message hasn't been created yet, create it with the first token
+                        if (!assistantCreated.current) {
+                            assistantCreated.current = true;
+                            return [...prev, {
+                                id: assistantMsgId,
+                                role: 'assistant' as const,
+                                content: token
+                            }];
+                        }
+                        return prev.map(msg =>
+                            msg.id === assistantMsgId ? { ...msg, content: msg.content + token } : msg
+                        );
+                    });
                 },
                 onConversationId: (id) => {
                     justCreatedRef.current = true;
