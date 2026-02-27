@@ -17,29 +17,36 @@ async def query_endpoint(request: QueryRequest, user_id: str = Depends(get_user_
     """
     Executes a RAG query against cybersecurity frameworks, returning
     the synthesized answer alongside retrieved context and citations.
+    
+    All persistence writes use admin_client (service-role) to bypass RLS.
+    user_id is set explicitly to maintain ownership.
     """
     try:
         logger.info(f"Received API query Request: {request.question}, Stream: {request.stream}, Conv: {request.conversation_id}")
+        
+        admin = supabase_service.admin_client
         
         # 1. Resolve Conversation ID
         conv_id = request.conversation_id
         if not conv_id:
             title = request.question[:50] + "..." if len(request.question) > 50 else request.question
-            conv_res = supabase_service.client.table("conversations").insert({
+            conv_res = admin.table("conversations").insert({
                 "user_id": user_id,
                 "title": title
             }).execute()
             if conv_res.data:
                 conv_id = conv_res.data[0]["id"]
+                logger.info(f"New conversation created: id={conv_id}, user={user_id}")
             else:
                 raise Exception("Failed to provision a new conversation timeline.")
                 
         # 2. Save User Message
-        supabase_service.client.table("messages").insert({
+        admin.table("messages").insert({
             "conversation_id": conv_id,
             "role": "user",
             "content": request.question
         }).execute()
+        logger.info(f"User message stored: conv={conv_id}")
         
         if request.stream:
             async def stream_and_save():
@@ -61,7 +68,7 @@ async def query_endpoint(request: QueryRequest, user_id: str = Depends(get_user_
                     
                 # Save assistant message upon stream completion
                 try:
-                    supabase_service.client.table("messages").insert({
+                    admin.table("messages").insert({
                         "conversation_id": conv_id,
                         "role": "assistant",
                         "content": full_answer,
@@ -70,9 +77,10 @@ async def query_endpoint(request: QueryRequest, user_id: str = Depends(get_user_
                         "mapping_mode": metadata.get("mapping_mode", False),
                         "incident_mode": metadata.get("incident_mode", False)
                     }).execute()
+                    logger.info(f"Assistant message stored: conv={conv_id}, length={len(full_answer)}")
                     
                     # Update conversation timestamp
-                    supabase_service.client.table("conversations").update({"updated_at": "now()"}).eq("id", conv_id).execute()
+                    admin.table("conversations").update({"updated_at": "now()"}).eq("id", conv_id).execute()
                 except Exception as db_e:
                     logger.error(f"Failed to save assistant stream message: {db_e}")
                     
@@ -87,7 +95,7 @@ async def query_endpoint(request: QueryRequest, user_id: str = Depends(get_user_
             
         result = await query_service.process_query(request.question, frameworks=request.frameworks)
         
-        supabase_service.client.table("messages").insert({
+        admin.table("messages").insert({
             "conversation_id": conv_id,
             "role": "assistant",
             "content": result["answer"],
@@ -96,7 +104,9 @@ async def query_endpoint(request: QueryRequest, user_id: str = Depends(get_user_
             "mapping_mode": result.get("mapping_mode", False),
             "incident_mode": result.get("incident_mode", False)
         }).execute()
-        supabase_service.client.table("conversations").update({"updated_at": "now()"}).eq("id", conv_id).execute()
+        logger.info(f"Assistant message stored (non-stream): conv={conv_id}")
+        
+        admin.table("conversations").update({"updated_at": "now()"}).eq("id", conv_id).execute()
         
         return QueryResponse(
             answer=result["answer"],

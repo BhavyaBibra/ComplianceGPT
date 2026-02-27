@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     # Supabase Configuration
     supabase_url: str = ""
     supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
     
     # LLM & Embedding APIs
     jina_api_key: str = ""

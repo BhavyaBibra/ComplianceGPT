@@ -44,7 +44,7 @@ class ConversationDetailResponse(ConversationResponse):
 # --- Dependencies ---
 
 def get_user_id(authorization: str = Header(None)) -> str:
-    """Extracts user ID from JWT token using Supabase Auth"""
+    """Extracts user ID from JWT token using Supabase Auth (public client)."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid authorization token")
         
@@ -60,12 +60,14 @@ def get_user_id(authorization: str = Header(None)) -> str:
         raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
 # --- Endpoints ---
+# READS use public client (RLS-enforced, scoped to user_id).
+# WRITES use admin_client (service-role, bypasses RLS, user_id set explicitly).
 
 @router.get("/conversations", response_model=List[ConversationResponse])
 async def list_conversations(user_id: str = Depends(get_user_id)):
     """Fetch all conversations for the authenticated user."""
     try:
-        response = supabase_service.client.table("conversations")\
+        response = supabase_service.admin_client.table("conversations")\
             .select("*")\
             .eq("user_id", user_id)\
             .order("updated_at", desc=True)\
@@ -77,17 +79,18 @@ async def list_conversations(user_id: str = Depends(get_user_id)):
 
 @router.post("/conversations", response_model=ConversationResponse)
 async def create_conversation(req: ConversationCreate, user_id: str = Depends(get_user_id)):
-    """Create a new conversation for the user."""
+    """Create a new conversation for the user. Uses admin_client to bypass RLS."""
     try:
         data = {
             "user_id": user_id,
             "title": req.title
         }
-        response = supabase_service.client.table("conversations").insert(data).execute()
+        response = supabase_service.admin_client.table("conversations").insert(data).execute()
         
         if not response.data:
             raise Exception("Failed to insert conversation")
-            
+        
+        logger.info(f"Conversation created: id={response.data[0]['id']}, user={user_id}")
         return response.data[0]
     except Exception as e:
         logger.error(f"Failed to create conversation: {e}")
@@ -97,8 +100,8 @@ async def create_conversation(req: ConversationCreate, user_id: str = Depends(ge
 async def get_conversation(conversation_id: str, user_id: str = Depends(get_user_id)):
     """Fetch a specific conversation and all its associated messages."""
     try:
-        # Get conversation metadata
-        conv_response = supabase_service.client.table("conversations")\
+        # Get conversation metadata (admin_client filtered by user_id for ownership check)
+        conv_response = supabase_service.admin_client.table("conversations")\
             .select("*")\
             .eq("id", conversation_id)\
             .eq("user_id", user_id)\
@@ -110,7 +113,7 @@ async def get_conversation(conversation_id: str, user_id: str = Depends(get_user
         conv = conv_response.data[0]
         
         # Get all messages
-        msg_response = supabase_service.client.table("messages")\
+        msg_response = supabase_service.admin_client.table("messages")\
             .select("*")\
             .eq("conversation_id", conversation_id)\
             .order("created_at", desc=False)\
@@ -126,10 +129,10 @@ async def get_conversation(conversation_id: str, user_id: str = Depends(get_user
 
 @router.post("/conversations/{conversation_id}/message", response_model=MessageResponse)
 async def append_message(conversation_id: str, req: MessageCreate, user_id: str = Depends(get_user_id)):
-    """Append a message independently (e.g. mapping LLM stream events)."""
+    """Append a message. Uses admin_client to bypass RLS."""
     try:
-        # Verify ownership
-        conv_check = supabase_service.client.table("conversations")\
+        # Verify ownership via admin_client
+        conv_check = supabase_service.admin_client.table("conversations")\
             .select("id")\
             .eq("id", conversation_id)\
             .eq("user_id", user_id)\
@@ -142,13 +145,15 @@ async def append_message(conversation_id: str, req: MessageCreate, user_id: str 
         msg_data = req.dict()
         msg_data["conversation_id"] = conversation_id
         
-        response = supabase_service.client.table("messages").insert(msg_data).execute()
+        response = supabase_service.admin_client.table("messages").insert(msg_data).execute()
         
         if not response.data:
             raise Exception("Failed to insert message")
+        
+        logger.info(f"Message appended: conv={conversation_id}, role={req.role}")
             
         # Update conversation timestamp
-        supabase_service.client.table("conversations")\
+        supabase_service.admin_client.table("conversations")\
             .update({"updated_at": datetime.utcnow().isoformat()})\
             .eq("id", conversation_id)\
             .execute()
@@ -162,9 +167,9 @@ async def append_message(conversation_id: str, req: MessageCreate, user_id: str 
 
 @router.delete("/conversations/{conversation_id}")
 async def delete_conversation(conversation_id: str, user_id: str = Depends(get_user_id)):
-    """Delete a conversation (messages auto cascade)."""
+    """Delete a conversation (messages auto cascade). Uses admin_client."""
     try:
-        response = supabase_service.client.table("conversations")\
+        response = supabase_service.admin_client.table("conversations")\
             .delete()\
             .eq("id", conversation_id)\
             .eq("user_id", user_id)\
@@ -172,7 +177,8 @@ async def delete_conversation(conversation_id: str, user_id: str = Depends(get_u
             
         if not response.data:
             raise HTTPException(status_code=404, detail="Conversation not found or already deleted")
-            
+        
+        logger.info(f"Conversation deleted: id={conversation_id}, user={user_id}")
         return {"status": "success", "deleted_id": conversation_id}
     except HTTPException:
         raise
