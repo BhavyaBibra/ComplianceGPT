@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, AlertCircle, Info, FileText, Shield } from 'lucide-react';
 import { MessageItem } from './MessageItem';
-import { submitQueryStream, type ChatMessage } from '../lib/api';
+import { submitQueryStream, fetchConversationDetail, type ChatMessage } from '../lib/api';
 import { ReportModal } from './ReportModal';
 
 const FRAMEWORK_OPTIONS = [
@@ -10,16 +10,16 @@ const FRAMEWORK_OPTIONS = [
     { id: 'nistcsf', label: 'NIST CSF' }
 ];
 
-export function ChatWorkspace() {
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        {
-            id: 'welcome',
-            role: 'assistant',
-            content: 'Hello! I am ComplianceGPT, your GenAI cybersecurity compliance copilot. Ask me questions about NIST 800-53, ISO 27001, and more.',
-        }
-    ]);
+interface ChatWorkspaceProps {
+    activeId: string | null;
+    onNewConversation: (id: string) => void;
+}
+
+export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProps) {
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isFetchingHistory, setIsFetchingHistory] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // All selected by default
@@ -39,8 +39,30 @@ export function ChatWorkspace() {
         scrollToBottom();
     }, [messages, loading]);
 
+    useEffect(() => {
+        if (!activeId) {
+            setMessages([{
+                id: 'welcome',
+                role: 'assistant',
+                content: 'Hello! I am ComplianceGPT, your GenAI cybersecurity compliance copilot. Ask me questions about NIST 800-53, ISO 27001, and more.',
+            }]);
+            return;
+        }
+
+        setIsFetchingHistory(true);
+        fetchConversationDetail(activeId)
+            .then(data => {
+                setMessages(data.messages || []);
+            })
+            .catch(err => {
+                console.error("Failed to fetch history:", err);
+                setError("Failed to fetch conversation history.");
+            })
+            .finally(() => setIsFetchingHistory(false));
+    }, [activeId]);
+
     const handleSend = async () => {
-        if (!input.trim() || loading) return;
+        if (!input.trim() || loading || isFetchingHistory) return;
 
         const userMsg: ChatMessage = {
             id: Date.now().toString(),
@@ -63,7 +85,7 @@ export function ChatWorkspace() {
         try {
             const frameworksArr = Array.from(selectedFrameworks);
 
-            await submitQueryStream(userMsg.content, frameworksArr, {
+            await submitQueryStream(userMsg.content, frameworksArr, activeId, {
                 onMetadata: (data) => {
                     setMessages((prev) => prev.map(msg =>
                         msg.id === assistantMsgId ? {
@@ -81,6 +103,9 @@ export function ChatWorkspace() {
                     setMessages((prev) => prev.map(msg =>
                         msg.id === assistantMsgId ? { ...msg, content: msg.content + token } : msg
                     ));
+                },
+                onConversationId: (id) => {
+                    onNewConversation(id);
                 },
                 onError: (err) => {
                     console.error(err);
@@ -126,30 +151,38 @@ export function ChatWorkspace() {
 
             {/* Scrollable Message List */}
             <div className="messages-container">
-                {messages.map((msg) => (
-                    <MessageItem key={msg.id} message={msg} />
-                ))}
+                {isFetchingHistory ? (
+                    <div className="flex h-full items-center justify-center">
+                        <Loader2 className="animate-spin text-accent-color opacity-50" size={32} />
+                    </div>
+                ) : (
+                    <>
+                        {messages.map((msg) => (
+                            <MessageItem key={msg.id} message={msg} />
+                        ))}
 
-                {loading && (
-                    <div className="message-wrapper assistant">
-                        <div className="flex flex-col max-w-[85%]">
-                            <span className="text-xs text-text-secondary mb-1 ml-1 font-medium">ComplianceGPT</span>
-                            <div className="bg-bg-secondary border border-border-color rounded-lg rounded-bl-none p-4 flex items-center gap-2">
-                                <Loader2 size={16} className="spinner text-accent-color" />
-                                <span className="text-text-secondary font-medium whitespace-nowrap">Gathering evidence...</span>
+                        {loading && (
+                            <div className="message-wrapper assistant">
+                                <div className="flex flex-col max-w-[85%]">
+                                    <span className="text-xs text-text-secondary mb-1 ml-1 font-medium">ComplianceGPT</span>
+                                    <div className="bg-bg-secondary border border-border-color rounded-lg rounded-bl-none p-4 flex items-center gap-2">
+                                        <Loader2 size={16} className="spinner text-accent-color" />
+                                        <span className="text-text-secondary font-medium whitespace-nowrap">Gathering evidence...</span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                )}
+                        )}
 
-                {error && (
-                    <div className="mx-auto flex max-w-lg items-center gap-2 rounded-md bg-red-950/40 border border-error-color/50 px-4 py-3 text-sm text-error-color mt-4">
-                        <AlertCircle size={16} />
-                        <p>{error}</p>
-                    </div>
-                )}
+                        {error && (
+                            <div className="mx-auto flex max-w-lg items-center gap-2 rounded-md bg-red-950/40 border border-error-color/50 px-4 py-3 text-sm text-error-color mt-4">
+                                <AlertCircle size={16} />
+                                <p>{error}</p>
+                            </div>
+                        )}
 
-                <div ref={messagesEndRef} />
+                        <div ref={messagesEndRef} />
+                    </>
+                )}
             </div>
 
             {/* Input Area */}
@@ -206,7 +239,7 @@ export function ChatWorkspace() {
                         <button
                             type="button"
                             onClick={handleSend}
-                            disabled={!input.trim() || loading || selectedFrameworks.size === 0}
+                            disabled={!input.trim() || loading || isFetchingHistory || selectedFrameworks.size === 0}
                             className="send-button"
                             aria-label="Send message"
                         >

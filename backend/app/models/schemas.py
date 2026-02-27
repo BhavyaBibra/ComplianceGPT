@@ -8,6 +8,7 @@ class QueryRequest(BaseModel):
     question: str
     frameworks: List[str] | None = None
     stream: bool = False
+    conversation_id: str | None = None
 
 class QueryResponse(BaseModel):
     """
@@ -19,6 +20,7 @@ class QueryResponse(BaseModel):
     citations: List[str] = []
     frameworks_used: List[str] = []
     retrieved_chunks: List[Dict[str, Any]] = []
+    conversation_id: str | None = None
 
 class ReportMessage(BaseModel):
     role: str

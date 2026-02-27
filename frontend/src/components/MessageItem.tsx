@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, FileText, Network, ArrowRight, ShieldAlert } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { MermaidDiagram } from './MermaidDiagram';
 import type { ChatMessage, RetrievedChunk } from '../lib/api';
 
 interface EvidencePanelProps {
@@ -249,28 +250,56 @@ export function MessageItem({ message }: MessageItemProps) {
 
     return (
         <div className={`message-wrapper ${isUser ? 'user' : 'assistant'}`}>
-            <div className="flex flex-col max-w-[85%]">
-                {!isUser && <span className="text-xs text-text-secondary mb-1 ml-1 font-medium">ComplianceGPT</span>}
+            <div className={`${isUser ? 'message-bubble-user' : 'assistant-message-content'}`}>
+                {!isUser && (
+                    <div className="flex items-center gap-2 mb-3 ml-2">
+                        <div className="w-6 h-6 rounded border border-border-color bg-bg-secondary flex items-center justify-center text-xs">
+                            🛡️
+                        </div>
+                        <span className="text-sm text-text-primary font-semibold tracking-tight">ComplianceGPT</span>
+                    </div>
+                )}
 
                 {isMapping ? (
-                    <div className="bg-bg-secondary border border-border-color rounded-lg rounded-bl-none p-5">
+                    <div className="bg-bg-secondary border border-border-color rounded-lg p-5 shadow-sm">
                         <MappingVisualizer chunks={message.evidence || []} answer={message.content} />
                     </div>
                 ) : isIncident ? (
-                    <div className="bg-bg-secondary border border-border-color rounded-lg rounded-bl-none p-5">
+                    <div className="bg-bg-secondary border border-border-color rounded-lg p-5 shadow-sm">
                         <IncidentVisualizer chunks={message.evidence || []} answer={message.content} />
                     </div>
                 ) : (
-                    <div className={`p-4 rounded-lg text-[0.95rem] leading-[1.6] ${!isUser ? 'markdown-body' : ''} ${isUser
-                        ? 'bg-accent-color text-white rounded-br-none'
-                        : 'bg-bg-secondary border border-border-color rounded-bl-none'
+                    <div className={`text-[0.95rem] leading-[1.7] ${!isUser ? 'markdown-body message-bubble-assistant' : 'whitespace-pre-wrap'
                         }`}>
                         {!isUser ? (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                    code({ node, inline, className, children, ...props }: any) {
+                                        const match = /language-(\w+)/.exec(className || '');
+                                        const isMermaid = match && match[1] === 'mermaid';
+
+                                        if (!inline && isMermaid) {
+                                            return <MermaidDiagram chart={String(children).replace(/\n$/, '')} />;
+                                        }
+                                        return !inline ? (
+                                            <pre className="bg-black/40 p-4 rounded-md overflow-x-auto my-4 border border-border-color/50 text-[0.85rem] shadow-sm">
+                                                <code className={className} {...props}>
+                                                    {children}
+                                                </code>
+                                            </pre>
+                                        ) : (
+                                            <code className="bg-white/10 px-1.5 py-0.5 rounded text-[0.85rem] text-accent-color/90 font-mono" {...props}>
+                                                {children}
+                                            </code>
+                                        )
+                                    }
+                                }}
+                            >
                                 {message.content}
                             </ReactMarkdown>
                         ) : (
-                            <div className="whitespace-pre-wrap">{message.content}</div>
+                            <>{message.content}</>
                         )}
                     </div>
                 )}

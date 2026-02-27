@@ -8,6 +8,8 @@ import type { Session } from '@supabase/supabase-js';
 function App() {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
+    const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+    const [triggerRefetch, setTriggerRefetch] = useState(0);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -38,8 +40,18 @@ function App() {
 
     return (
         <div className="app-container">
-            <Sidebar />
-            <ChatWorkspace />
+            <Sidebar
+                activeId={activeConversationId}
+                onSelect={setActiveConversationId}
+                triggerRefetch={triggerRefetch}
+            />
+            <ChatWorkspace
+                activeId={activeConversationId}
+                onNewConversation={(id: string) => {
+                    setActiveConversationId(id);
+                    setTriggerRefetch(prev => prev + 1);
+                }}
+            />
         </div>
     );
 }
