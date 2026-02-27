@@ -24,7 +24,7 @@ export interface QueryResponse {
     retrieved_chunks: RetrievedChunk[];
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export const submitQuery = async (question: string, frameworks?: string[]): Promise<QueryResponse> => {
     const body: any = { question };
@@ -32,7 +32,7 @@ export const submitQuery = async (question: string, frameworks?: string[]): Prom
         body.frameworks = frameworks;
     }
 
-    const res = await fetch(`${API_BASE_URL}/query`, {
+    const res = await fetch(`${API_BASE}/api/query`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ export const submitQuery = async (question: string, frameworks?: string[]): Prom
 };
 
 export async function generateReport(reportType: string, messages: ChatMessage[]): Promise<{ markdown: string }> {
-    const response = await fetch(`${API_BASE_URL}/report`, {
+    const response = await fetch(`${API_BASE}/api/report`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -85,7 +85,7 @@ export const submitQueryStream = async (question: string, frameworks: string[] |
     }
 
     try {
-        const res = await fetch(`${API_BASE_URL}/query`, {
+        const res = await fetch(`${API_BASE}/api/query`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
