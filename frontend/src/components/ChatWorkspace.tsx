@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, AlertCircle, Info, FileText, Shield } from 'lucide-react';
+import { Send, Loader2, AlertCircle, Info, FileText, Shield, Menu } from 'lucide-react';
 import { MessageItem } from './MessageItem';
 import { submitQueryStream, fetchConversationDetail, type ChatMessage } from '../lib/api';
 import { ReportModal } from './ReportModal';
@@ -23,9 +23,10 @@ const SUGGESTION_CARDS = [
 interface ChatWorkspaceProps {
     activeId: string | null;
     onNewConversation: (id: string) => void;
+    onToggleSidebar: () => void;
 }
 
-export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProps) {
+export function ChatWorkspace({ activeId, onNewConversation, onToggleSidebar }: ChatWorkspaceProps) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -190,6 +191,9 @@ export function ChatWorkspace({ activeId, onNewConversation }: ChatWorkspaceProp
         <main className="chat-workspace">
             <header className="chat-header">
                 <div className="header-title-container">
+                    <button className="mobile-menu-btn" onClick={onToggleSidebar} aria-label="Toggle sidebar">
+                        <Menu size={22} />
+                    </button>
                     <Shield size={24} className="header-shield-icon" />
                     <h1 className="header-title">ComplianceGPT</h1>
                 </div>

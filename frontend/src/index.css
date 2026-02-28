@@ -1540,3 +1540,270 @@ body {
 .header-shield-icon {
     color: var(--accent-color);
 }
+
+/* ===== Mobile Menu Button (hidden on desktop) ===== */
+.mobile-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.375rem;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.mobile-menu-btn:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ===== Sidebar Close Button (hidden on desktop) ===== */
+.sidebar-close-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.375rem;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.sidebar-close-btn:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ===== Sidebar Header Row ===== */
+.sidebar-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ===== Sidebar Overlay (hidden on desktop) ===== */
+.sidebar-overlay {
+    display: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — max-width: 768px
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+    /* ── Sidebar: Off-canvas overlay ── */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: none;
+    }
+
+    .sidebar.sidebar-mobile-open {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .sidebar-close-btn {
+        display: flex;
+    }
+
+    .sidebar-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 99;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+
+    /* ── Hamburger menu visible ── */
+    .mobile-menu-btn {
+        display: flex;
+    }
+
+    /* ── Chat header adjustments ── */
+    .chat-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .header-title {
+        font-size: 1rem;
+    }
+
+    .generate-report-btn span {
+        display: none;
+    }
+
+    .generate-report-btn {
+        padding: 0.5rem;
+        min-width: unset;
+    }
+
+    /* ── Messages container ── */
+    .messages-container {
+        padding: 1rem;
+        gap: 1.25rem;
+    }
+
+    .message-bubble-user {
+        max-width: 90%;
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .message-bubble-assistant {
+        padding: 1rem;
+        font-size: 0.9rem;
+    }
+
+    /* ── Welcome screen ── */
+    .welcome-screen {
+        padding: 1.5rem 1rem;
+    }
+
+    .welcome-heading {
+        font-size: 1.25rem;
+    }
+
+    .welcome-subtext {
+        font-size: 0.85rem;
+    }
+
+    .suggestion-cards-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .suggestion-card {
+        padding: 0.875rem;
+    }
+
+    .suggestion-card-prompt {
+        font-size: 0.75rem;
+    }
+
+    /* ── Input area ── */
+    .input-area {
+        padding: 0.75rem;
+    }
+
+    .input-area-content {
+        max-width: 100%;
+    }
+
+    .input-form {
+        max-width: 100%;
+        padding: 0.5rem;
+        border-radius: 12px;
+    }
+
+    .chat-input {
+        font-size: 0.9rem;
+        padding: 0.375rem 0.5rem;
+    }
+
+    .send-button {
+        padding: 0.5rem;
+    }
+
+    /* ── Framework chips ── */
+    .framework-chips {
+        gap: 0.375rem;
+    }
+
+    .framework-chip {
+        padding: 0.25rem 0.6rem;
+        font-size: 0.65rem;
+    }
+
+    .framework-selector-container {
+        max-width: 100%;
+    }
+
+    .scope-indicator {
+        font-size: 0.65rem;
+    }
+
+    /* ── Evidence cards ── */
+    .evidence-card {
+        padding: 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    /* ── Auth ── */
+    .auth-card {
+        margin: 1rem;
+        padding: 1.5rem;
+        max-width: calc(100vw - 2rem);
+    }
+
+    /* ── Error banner ── */
+    .error-banner {
+        max-width: 100%;
+        margin: 0.75rem 0.5rem 0;
+        font-size: 0.8rem;
+    }
+
+    /* ── Report Modal ── */
+    .report-modal-overlay .report-modal-content {
+        width: 95vw;
+        max-height: 85vh;
+        margin: 1rem;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════
+   SMALL MOBILE — max-width: 480px
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .header-title {
+        font-size: 0.9rem;
+    }
+
+    .messages-container {
+        padding: 0.75rem;
+        gap: 1rem;
+    }
+
+    .message-bubble-user {
+        max-width: 95%;
+    }
+
+    .welcome-heading {
+        font-size: 1.1rem;
+    }
+
+    .suggestion-card-title {
+        font-size: 0.8rem;
+    }
+
+    .framework-chips {
+        flex-wrap: wrap;
+    }
+
+    .framework-chip {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.5rem;
+    }
+
+    .chat-input {
+        font-size: 0.85rem;
+    }
+}

@@ -10,6 +10,7 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const [triggerRefetch, setTriggerRefetch] = useState(0);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -38,19 +39,28 @@ function App() {
         return <Auth />;
     }
 
+    const handleSelectConversation = (id: string | null) => {
+        setActiveConversationId(id);
+        setSidebarOpen(false);  // auto-close sidebar on mobile after selecting
+    };
+
     return (
         <div className="app-container">
             <Sidebar
                 activeId={activeConversationId}
-                onSelect={setActiveConversationId}
+                onSelect={handleSelectConversation}
                 triggerRefetch={triggerRefetch}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
             />
+            {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
             <ChatWorkspace
                 activeId={activeConversationId}
                 onNewConversation={(id: string) => {
                     setActiveConversationId(id);
                     setTriggerRefetch(prev => prev + 1);
                 }}
+                onToggleSidebar={() => setSidebarOpen(prev => !prev)}
             />
         </div>
     );

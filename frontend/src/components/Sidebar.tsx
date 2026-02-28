@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LogOut, Shield, Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { LogOut, Shield, Plus, MessageSquare, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { fetchConversations, deleteConversation, type Conversation } from '../lib/api';
 
@@ -7,6 +7,8 @@ interface SidebarProps {
     activeId: string | null;
     onSelect: (id: string | null) => void;
     triggerRefetch: number;
+    isOpen: boolean;
+    onClose: () => void;
 }
 
 function getDateGroup(dateStr: string): string {
@@ -47,7 +49,7 @@ function groupConversationsByDate(conversations: Conversation[]): Record<string,
     return ordered;
 }
 
-export function Sidebar({ activeId, onSelect, triggerRefetch }: SidebarProps) {
+export function Sidebar({ activeId, onSelect, triggerRefetch, isOpen, onClose }: SidebarProps) {
     const [conversations, setConversations] = useState<Conversation[]>([]);
 
     useEffect(() => {
@@ -76,12 +78,17 @@ export function Sidebar({ activeId, onSelect, triggerRefetch }: SidebarProps) {
     const grouped = groupConversationsByDate(conversations);
 
     return (
-        <aside className="sidebar">
+        <aside className={`sidebar ${isOpen ? 'sidebar-mobile-open' : ''}`}>
             <div className="sidebar-header">
-                <h1 className="sidebar-title">
-                    <Shield size={20} />
-                    ComplianceGPT
-                </h1>
+                <div className="sidebar-header-row">
+                    <h1 className="sidebar-title">
+                        <Shield size={20} />
+                        ComplianceGPT
+                    </h1>
+                    <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
+                        <X size={20} />
+                    </button>
+                </div>
                 <p className="sidebar-subtitle">Cybersecurity Copilot</p>
             </div>
 
