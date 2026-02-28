@@ -7,14 +7,17 @@ import { ReportModal } from './ReportModal';
 const FRAMEWORK_OPTIONS = [
     { id: 'nist80053', label: 'NIST 800-53' },
     { id: 'iso27001', label: 'ISO 27001' },
-    { id: 'nistcsf', label: 'NIST CSF' }
+    { id: 'nistcsf', label: 'NIST CSF' },
+    { id: 'cis', label: 'CIS Controls' },
+    { id: 'mitre', label: 'MITRE ATT&CK' },
+    { id: 'nist-ai', label: 'NIST AI RMF' },
 ];
 
 const SUGGESTION_CARDS = [
-    { icon: '🔗', title: 'Map Controls', prompt: 'Map NIST 800-53 AC-2 to its ISO 27001 equivalent controls' },
-    { icon: '🛡️', title: 'Analyze Incident', prompt: 'A phishing email compromised an admin account. What controls should we review?' },
-    { icon: '📋', title: 'Explain Controls', prompt: 'Explain the NIST 800-53 access control family and its key controls' },
-    { icon: '📊', title: 'Compliance Gap', prompt: 'What are common gaps between ISO 27001 and NIST CSF implementations?' },
+    { icon: '🔗', title: 'Map Controls', prompt: 'Map NIST 800-53 AC-2 to its ISO 27001 and CIS Controls equivalents' },
+    { icon: '🛡️', title: 'Analyze Incident', prompt: 'A phishing email compromised an admin account. What MITRE ATT&CK techniques and controls should we review?' },
+    { icon: '🤖', title: 'AI Risk', prompt: 'What are the key risk categories in the NIST AI Risk Management Framework?' },
+    { icon: '📊', title: 'CIS Benchmarks', prompt: 'Explain CIS Controls v8 and how they map to NIST 800-53 families' },
 ];
 
 interface ChatWorkspaceProps {
