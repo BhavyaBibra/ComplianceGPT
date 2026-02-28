@@ -5,6 +5,12 @@ from pathlib import Path
 from app.services.embedding_service import EmbeddingService
 from app.services.supabase_service import SupabaseService
 
+try:
+    from PyPDF2 import PdfReader
+    PDF_SUPPORT = True
+except ImportError:
+    PDF_SUPPORT = False
+
 logger = logging.getLogger(__name__)
 
 class IngestionService:
@@ -58,10 +64,18 @@ class IngestionService:
 
     async def ingest_file(self, file_path: Path, framework: str) -> int:
         """
-        Reads a file, chunks the text, creates embeddings, and stores them in Supabase.
+        Reads a file (.txt, .md, or .pdf), chunks the text, creates embeddings, and stores them in Supabase.
         """
         try:
-            content = file_path.read_text(encoding="utf-8")
+            if file_path.suffix.lower() == '.pdf':
+                if not PDF_SUPPORT:
+                    logger.error(f"PyPDF2 not installed. Cannot ingest PDF: {file_path.name}")
+                    return 0
+                reader = PdfReader(str(file_path))
+                content = "\n".join(page.extract_text() or "" for page in reader.pages)
+                logger.info(f"Extracted {len(reader.pages)} pages from PDF: {file_path.name}")
+            else:
+                content = file_path.read_text(encoding="utf-8")
         except Exception as e:
             logger.error(f"Error reading file {file_path}: {e}")
             return 0
@@ -96,7 +110,7 @@ class IngestionService:
         The framework name is inferred from the parent folder (e.g. data/nist80053/).
         """
         logger.info(f"Starting document ingestion pipeline from {self.data_dir}")
-        target_exts = {".txt", ".md"}
+        target_exts = {".txt", ".md", ".pdf"}
         total_stored = 0
         
         if not self.data_dir.exists() or not self.data_dir.is_dir():
