@@ -36,7 +36,8 @@ class RetrievalService:
                 chunk_struct = {
                     "chunk": item.get("chunk", ""),
                     "framework": item.get("framework", "Unknown"),
-                    "similarity": item.get("similarity", 0.0)
+                    "similarity": item.get("similarity", 0.0),
+                    "metadata": item.get("metadata", {}),
                 }
                 
                 # Apply framework filtering natively
@@ -52,25 +53,45 @@ class RetrievalService:
             logger.error(f"Retrieval error: {e}")
             return []
 
+
 def build_context(retrieval_results: List[Dict[str, Any]]) -> str:
     """
-    Concatenate chunks and group by framework labels to build LLM context string.
-    Example:
-    === NIST80053 ===
-    chunks...
+    Build structured context for the LLM with numbered chunks,
+    framework labels, and similarity scores for reasoning clarity.
+    
+    Format:
+        === Retrieved Context ===
+        [Chunk 1 | Framework: CIS | Similarity: 0.83]
+        <chunk text>
+        
+        [Chunk 2 | Framework: NIST80053 | Similarity: 0.79]
+        <chunk text>
+        === End Context ===
     """
-    # Group results by framework
-    grouped: Dict[str, List[str]] = {}
-    for doc in retrieval_results:
-        fw = doc.get("framework", "Unknown")
+    if not retrieval_results:
+        return "=== Retrieved Context ===\nNo relevant documents found.\n=== End Context ==="
+    
+    context_parts = ["=== Retrieved Context ==="]
+    
+    for i, doc in enumerate(retrieval_results, 1):
+        fw = doc.get("framework", "Unknown").upper()
+        similarity = doc.get("similarity", 0.0)
         chunk = doc.get("chunk", "")
-        if fw not in grouped:
-            grouped[fw] = []
-        grouped[fw].append(chunk)
+        metadata = doc.get("metadata", {})
+        source_file = metadata.get("source_file", "") if isinstance(metadata, dict) else ""
+        section_hint = metadata.get("section_hint", "") if isinstance(metadata, dict) else ""
         
-    context_parts = []
-    for fw, chunks in grouped.items():
-        context_parts.append(f"=== {fw.upper()} ===")
-        context_parts.append("\n\n".join(chunks))
+        # Build header line
+        header = f"[Chunk {i} | Framework: {fw} | Similarity: {similarity:.2f}"
+        if source_file:
+            header += f" | Source: {source_file}"
+        if section_hint:
+            header += f" | Section: {section_hint}"
+        header += "]"
         
-    return "\n\n".join(context_parts)
+        context_parts.append(header)
+        context_parts.append(chunk.strip())
+        context_parts.append("")  # blank line separator
+    
+    context_parts.append("=== End Context ===")
+    return "\n".join(context_parts)
