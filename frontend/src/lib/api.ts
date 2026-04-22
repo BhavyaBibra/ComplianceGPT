@@ -57,7 +57,7 @@ export const submitQuery = async (question: string, frameworks?: string[], conve
         ...(await getAuthHeaders())
     };
 
-    const res = await fetch(`${API_BASE}/api/query`, {
+    const res = await fetch(`${API_BASE}/query`, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
@@ -120,7 +120,7 @@ export const submitQueryStream = async (question: string, frameworks: string[] |
             ...(await getAuthHeaders())
         };
 
-        const res = await fetch(`${API_BASE}/api/query`, {
+        const res = await fetch(`${API_BASE}/query`, {
             method: 'POST',
             headers,
             body: JSON.stringify(body),
@@ -180,20 +180,20 @@ export const submitQueryStream = async (question: string, frameworks: string[] |
 
 export async function fetchConversations(): Promise<Conversation[]> {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_BASE}/api/conversations`, { headers });
+    const res = await fetch(`${API_BASE}/conversations`, { headers });
     if (!res.ok) throw new Error("Failed to fetch conversations");
     return res.json();
 }
 
 export async function fetchConversationDetail(id: string): Promise<Conversation & { messages: ChatMessage[] }> {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_BASE}/api/conversations/${id}`, { headers });
+    const res = await fetch(`${API_BASE}/conversations/${id}`, { headers });
     if (!res.ok) throw new Error("Failed to fetch conversation detail");
     return res.json();
 }
 
 export async function deleteConversation(id: string): Promise<void> {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_BASE}/api/conversations/${id}`, { method: 'DELETE', headers });
+    const res = await fetch(`${API_BASE}/conversations/${id}`, { method: 'DELETE', headers });
     if (!res.ok) throw new Error("Failed to delete conversation");
 }
