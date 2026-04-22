@@ -33,7 +33,15 @@ export interface Conversation {
     updated_at: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+// Fallback to friend's backend if Vercel still has the dead environment variable
+let envBase = import.meta.env.VITE_API_BASE_URL;
+if (envBase && envBase.includes("compliancegpt-production.up.railway.app") && !envBase.includes("7fe9")) {
+    envBase = undefined; // Bypass dead URL from Vercel config
+}
+
+const rawBase = envBase || "https://compliancegpt-production-7fe9.up.railway.app";
+// Ensure API_BASE includes /api since fetch paths are now /query and /conversations
+const API_BASE = rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`;
 
 import { supabase } from './supabase';
 
