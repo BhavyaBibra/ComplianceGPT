@@ -84,7 +84,7 @@ export async function generateReport(reportType: string, messages: ChatMessage[]
         ...(await getAuthHeaders())
     };
 
-    const response = await fetch(`${API_BASE}/api/report`, {
+    const response = await fetch(`${API_BASE}/report`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -113,13 +113,16 @@ export interface StreamCallbacks {
     onComplete?: () => void;
 }
 
-export const submitQueryStream = async (question: string, frameworks: string[] | undefined, conversation_id: string | null, callbacks: StreamCallbacks) => {
+export const submitQueryStream = async (question: string, frameworks: string[] | undefined, conversation_id: string | null, history: {role: string, content: string}[] | undefined, callbacks: StreamCallbacks) => {
     const body: any = { question, stream: true };
     if (frameworks && frameworks.length > 0) {
         body.frameworks = frameworks;
     }
     if (conversation_id) {
         body.conversation_id = conversation_id;
+    }
+    if (history && history.length > 0) {
+        body.history = history;
     }
 
     try {

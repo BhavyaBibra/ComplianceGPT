@@ -9,6 +9,7 @@ class QueryRequest(BaseModel):
     frameworks: List[str] | None = None
     stream: bool = False
     conversation_id: str | None = None
+    history: List[Dict[str, str]] | None = None
 
 class QueryResponse(BaseModel):
     """

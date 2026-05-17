@@ -19,26 +19,39 @@ class QueryService:
         self.retrieval_service = RetrievalService()
         self.llm_service = LLMService()
         self.threat_service = ThreatService(self.retrieval_service)
+
+    async def _prepare_chat_context(self, history: List[Dict[str, str]] | None) -> str:
+        if not history:
+            return ""
         
-    async def process_query(self, question: str, frameworks: List[str] | None = None) -> Dict[str, Any]:
+        if len(history) >= 10:
+            logger.info(f"Query Service: Compacting {len(history)} messages into context summary.")
+            return await self.llm_service.summarize_context(history)
+        else:
+            logger.info(f"Query Service: Passing {len(history)} messages as raw context.")
+            return "\n".join([f"[{msg['role'].upper()}]: {msg['content']}" for msg in history])
+        
+    async def process_query(self, question: str, frameworks: List[str] | None = None, history: List[Dict[str, str]] | None = None) -> Dict[str, Any]:
         """
         Runs full RAG pipeline returning answer, citations, frameworks_used, and chunks.
         """
         start_time = time.time()
         logger.info(f"Query Service: Starting process for question: {question} with frameworks: {frameworks}")
         
+        chat_context = await self._prepare_chat_context(history)
+        
         # 0. Check for Control Mapping Intent
         mapping_intent = parse_control_intent(question)
         
         if mapping_intent["mapping_intent"] and mapping_intent["control_id"]:
             logger.info(f"Query Service: Detected MAPPING INTENT for control {mapping_intent['control_id']} from {mapping_intent['source_framework']}")
-            return await self._process_mapping_query(question, mapping_intent, frameworks, start_time)
+            return await self._process_mapping_query(question, mapping_intent, frameworks, start_time, chat_context)
             
         # 0.5 Check for Threat / Incident Intent
         threat_intent = parse_threat_intent(question)
         if threat_intent["threat_intent"]:
             logger.info(f"Query Service: Detected THREAT INTENT (Tech: {threat_intent['technique_id']}, Keyword: {threat_intent['threat_keyword']})")
-            return await self._process_threat_query(question, threat_intent, frameworks, start_time)
+            return await self._process_threat_query(question, threat_intent, frameworks, start_time, chat_context)
         
         # 1. Retrieve chunks (Standard RAG)
         retrieval_results = await self.retrieval_service.get_relevant_chunks(question, frameworks=frameworks, limit=5)
@@ -56,7 +69,7 @@ class QueryService:
         
         # 3. Call LLM
         logger.info("Query Service: Generating RAG answer...")
-        answer = await self.llm_service.generate_rag_answer(question, context)
+        answer = await self.llm_service.generate_rag_answer(question, context, chat_context=chat_context)
         
         latency = time.time() - start_time
         logger.info(f"Query Service: Process complete in {latency:.2f}s.")
@@ -68,21 +81,23 @@ class QueryService:
             "retrieved_chunks": retrieval_results
         }
 
-    async def process_query_stream(self, question: str, frameworks: List[str] | None = None) -> __import__('typing').AsyncGenerator[str, None]:
+    async def process_query_stream(self, question: str, frameworks: List[str] | None = None, history: List[Dict[str, str]] | None = None) -> __import__('typing').AsyncGenerator[str, None]:
         import json
         
         start_time = time.time()
         logger.info(f"Query Service: Starting STREAM process for question: {question}")
         
+        chat_context = await self._prepare_chat_context(history)
+        
         mapping_intent = parse_control_intent(question)
         if mapping_intent["mapping_intent"] and mapping_intent["control_id"]:
-            async for chunk in self._process_mapping_query_stream(question, mapping_intent, frameworks, start_time):
+            async for chunk in self._process_mapping_query_stream(question, mapping_intent, frameworks, start_time, chat_context):
                 yield chunk
             return
             
         threat_intent = parse_threat_intent(question)
         if threat_intent["threat_intent"]:
-            async for chunk in self._process_threat_query_stream(question, threat_intent, frameworks, start_time):
+            async for chunk in self._process_threat_query_stream(question, threat_intent, frameworks, start_time, chat_context):
                 yield chunk
             return
             
@@ -100,12 +115,12 @@ class QueryService:
         yield f"data: {json.dumps({'type': 'metadata', 'data': metadata})}\n\n"
         
         logger.info("Query Service: Streaming RAG answer...")
-        async for text_chunk in self.llm_service.generate_rag_answer_stream(question, context):
+        async for text_chunk in self.llm_service.generate_rag_answer_stream(question, context, chat_context=chat_context):
             yield f"data: {json.dumps({'type': 'content', 'text': text_chunk})}\n\n"
             
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
-    async def _process_mapping_query(self, question: str, intent: Dict[str, Any], frameworks: List[str] | None, start_time: float) -> Dict[str, Any]:
+    async def _process_mapping_query(self, question: str, intent: Dict[str, Any], frameworks: List[str] | None, start_time: float, chat_context: str = "") -> Dict[str, Any]:
         """
         Specialized pipeline for cross-framework control mapping.
         """
@@ -147,7 +162,7 @@ class QueryService:
         citations = extract_citations(unique_chunks)
         
         logger.info("Query Service: Generating MAPPING answer...")
-        answer = await self.llm_service.generate_mapping_answer(question, context)
+        answer = await self.llm_service.generate_mapping_answer(question, context, chat_context=chat_context)
         
         latency = time.time() - start_time
         logger.info(f"Query Service: Mapping Process complete in {latency:.2f}s.")
@@ -160,7 +175,7 @@ class QueryService:
             "mapping_mode": True
         }
 
-    async def _process_mapping_query_stream(self, question: str, intent: Dict[str, Any], frameworks: List[str] | None, start_time: float) -> __import__('typing').AsyncGenerator[str, None]:
+    async def _process_mapping_query_stream(self, question: str, intent: Dict[str, Any], frameworks: List[str] | None, start_time: float, chat_context: str = "") -> __import__('typing').AsyncGenerator[str, None]:
         import json
         control_id = intent["control_id"]
         source_framework = intent["source_framework"]
@@ -199,12 +214,12 @@ class QueryService:
         }
         yield f"data: {json.dumps({'type': 'metadata', 'data': metadata})}\n\n"
         
-        async for text_chunk in self.llm_service.generate_mapping_answer_stream(question, context):
+        async for text_chunk in self.llm_service.generate_mapping_answer_stream(question, context, chat_context=chat_context):
             yield f"data: {json.dumps({'type': 'content', 'text': text_chunk})}\n\n"
             
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
-    async def _process_threat_query(self, question: str, intent: Dict[str, Any], frameworks: List[str] | None, start_time: float) -> Dict[str, Any]:
+    async def _process_threat_query(self, question: str, intent: Dict[str, Any], frameworks: List[str] | None, start_time: float, chat_context: str = "") -> Dict[str, Any]:
         """
         Specialized pipeline for MITRE ATT&CK incident response and mitigation planning.
         """
@@ -216,7 +231,7 @@ class QueryService:
         citations = extract_citations(unique_chunks)
         
         logger.info("Query Service: Generating INCIDENT RESPONSE answer...")
-        answer = await self.llm_service.generate_incident_response_answer(question, context)
+        answer = await self.llm_service.generate_incident_response_answer(question, context, chat_context=chat_context)
         
         latency = time.time() - start_time
         logger.info(f"Query Service: Threat Process complete in {latency:.2f}s.")
@@ -229,7 +244,7 @@ class QueryService:
             "incident_mode": True
         }
 
-    async def _process_threat_query_stream(self, question: str, intent: Dict[str, Any], frameworks: List[str] | None, start_time: float) -> __import__('typing').AsyncGenerator[str, None]:
+    async def _process_threat_query_stream(self, question: str, intent: Dict[str, Any], frameworks: List[str] | None, start_time: float, chat_context: str = "") -> __import__('typing').AsyncGenerator[str, None]:
         import json
         context, unique_chunks = await self.threat_service.build_threat_context(question, intent, frameworks)
         citations = extract_citations(unique_chunks)
@@ -243,7 +258,7 @@ class QueryService:
         }
         yield f"data: {json.dumps({'type': 'metadata', 'data': metadata})}\n\n"
         
-        async for text_chunk in self.llm_service.generate_incident_response_answer_stream(question, context):
+        async for text_chunk in self.llm_service.generate_incident_response_answer_stream(question, context, chat_context=chat_context):
             yield f"data: {json.dumps({'type': 'content', 'text': text_chunk})}\n\n"
             
         yield f"data: {json.dumps({'type': 'done'})}\n\n"

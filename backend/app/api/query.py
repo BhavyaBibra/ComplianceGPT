@@ -56,7 +56,7 @@ async def query_endpoint(request: QueryRequest, user_id: str = Depends(get_user_
                 
                 full_answer = ""
                 metadata = {}
-                async for chunk in query_service.process_query_stream(request.question, frameworks=request.frameworks):
+                async for chunk in query_service.process_query_stream(request.question, frameworks=request.frameworks, history=request.history):
                     if chunk.startswith("data: "):
                         try:
                             data_str = chunk[6:].strip()
@@ -93,7 +93,7 @@ async def query_endpoint(request: QueryRequest, user_id: str = Depends(get_user_
                 media_type="text/event-stream"
             )
             
-        result = await query_service.process_query(request.question, frameworks=request.frameworks)
+        result = await query_service.process_query(request.question, frameworks=request.frameworks, history=request.history)
         
         admin.table("messages").insert({
             "conversation_id": conv_id,

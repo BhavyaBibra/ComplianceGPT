@@ -243,18 +243,32 @@ class LLMService:
         
         yield "I am currently unable to answer due to LLM provider errors or missing configuration. Please check API keys."
 
+    # ── Public: Context Compaction ──────────────────────────────────────
+
+    async def summarize_context(self, history: list) -> str:
+        history_str = "\n".join([f"[{msg['role'].upper()}]: {msg['content']}" for msg in history])
+        sys_prompt = "You are an expert AI summarizer. Condense the following chat history into a succinct, running summary of the conversation context, highlighting key questions asked and information provided."
+        prompt = f"CHAT HISTORY:\n{history_str}\n\nPlease provide a concise summary of the conversation so far."
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": prompt}
+        ]
+        return await self._call_llm(messages, temperature=0.3, timeout=30.0)
+
     # ── Public: Standard RAG ────────────────────────────────────────────
 
-    async def generate_rag_answer(self, question: str, context: str) -> str:
-        prompt = f"{context}\n\nQUESTION:\n{question}"
+    async def generate_rag_answer(self, question: str, context: str, chat_context: str = "") -> str:
+        base_prompt = f"PREVIOUS CHAT CONTEXT:\n{chat_context}\n\n" if chat_context else ""
+        prompt = f"{base_prompt}{context}\n\nQUESTION:\n{question}"
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT_RAG},
             {"role": "user", "content": prompt}
         ]
         return await self._call_llm(messages)
 
-    async def generate_rag_answer_stream(self, question: str, context: str) -> __import__('typing').AsyncGenerator[str, None]:
-        prompt = f"{context}\n\nQUESTION:\n{question}"
+    async def generate_rag_answer_stream(self, question: str, context: str, chat_context: str = "") -> __import__('typing').AsyncGenerator[str, None]:
+        base_prompt = f"PREVIOUS CHAT CONTEXT:\n{chat_context}\n\n" if chat_context else ""
+        prompt = f"{base_prompt}{context}\n\nQUESTION:\n{question}"
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT_RAG},
             {"role": "user", "content": prompt}
@@ -264,16 +278,18 @@ class LLMService:
 
     # ── Public: Cross-Framework Mapping ─────────────────────────────────
 
-    async def generate_mapping_answer(self, question: str, context: str) -> str:
-        prompt = f"{context}\n\nQUESTION:\n{question}"
+    async def generate_mapping_answer(self, question: str, context: str, chat_context: str = "") -> str:
+        base_prompt = f"PREVIOUS CHAT CONTEXT:\n{chat_context}\n\n" if chat_context else ""
+        prompt = f"{base_prompt}{context}\n\nQUESTION:\n{question}"
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT_MAPPING},
             {"role": "user", "content": prompt}
         ]
         return await self._call_llm(messages)
 
-    async def generate_mapping_answer_stream(self, question: str, context: str) -> __import__('typing').AsyncGenerator[str, None]:
-        prompt = f"{context}\n\nQUESTION:\n{question}"
+    async def generate_mapping_answer_stream(self, question: str, context: str, chat_context: str = "") -> __import__('typing').AsyncGenerator[str, None]:
+        base_prompt = f"PREVIOUS CHAT CONTEXT:\n{chat_context}\n\n" if chat_context else ""
+        prompt = f"{base_prompt}{context}\n\nQUESTION:\n{question}"
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT_MAPPING},
             {"role": "user", "content": prompt}
@@ -283,16 +299,18 @@ class LLMService:
 
     # ── Public: Incident Response / Threat Analysis ─────────────────────
 
-    async def generate_incident_response_answer(self, question: str, context: str) -> str:
-        prompt = f"{context}\n\nQUESTION:\n{question}"
+    async def generate_incident_response_answer(self, question: str, context: str, chat_context: str = "") -> str:
+        base_prompt = f"PREVIOUS CHAT CONTEXT:\n{chat_context}\n\n" if chat_context else ""
+        prompt = f"{base_prompt}{context}\n\nQUESTION:\n{question}"
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT_INCIDENT},
             {"role": "user", "content": prompt}
         ]
         return await self._call_llm(messages)
 
-    async def generate_incident_response_answer_stream(self, question: str, context: str) -> __import__('typing').AsyncGenerator[str, None]:
-        prompt = f"{context}\n\nQUESTION:\n{question}"
+    async def generate_incident_response_answer_stream(self, question: str, context: str, chat_context: str = "") -> __import__('typing').AsyncGenerator[str, None]:
+        base_prompt = f"PREVIOUS CHAT CONTEXT:\n{chat_context}\n\n" if chat_context else ""
+        prompt = f"{base_prompt}{context}\n\nQUESTION:\n{question}"
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT_INCIDENT},
             {"role": "user", "content": prompt}

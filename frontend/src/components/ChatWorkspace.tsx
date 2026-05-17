@@ -106,8 +106,9 @@ export function ChatWorkspace({ activeId, onNewConversation, onToggleSidebar }: 
 
         try {
             const frameworksArr = Array.from(selectedFrameworks);
+            const history = messages.map(m => ({ role: m.role, content: m.content }));
 
-            await submitQueryStream(text, frameworksArr, activeId, {
+            await submitQueryStream(text, frameworksArr, activeId, history, {
                 onMetadata: (data) => {
                     setMessages((prev) => {
                         // If assistant message hasn't been created yet, create it with metadata
