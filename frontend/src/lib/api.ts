@@ -35,7 +35,7 @@ export interface Conversation {
 
 let envBase = import.meta.env.VITE_API_BASE_URL;
 
-const rawBase = envBase || "https://compliancegpt-production.up.railway.app";
+const rawBase = (envBase || "https://compliancegpt-production.up.railway.app").replace(/\/+$/, '');
 // Ensure API_BASE includes /api since fetch paths are now /query and /conversations
 const API_BASE = rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`;
 
